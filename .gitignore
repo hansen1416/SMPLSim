@@ -144,3 +144,5 @@ demo_vis
 demo*
 *.pkl
 new_trials
+
+output/
