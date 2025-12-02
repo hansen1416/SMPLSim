@@ -1,4 +1,3 @@
-[Repo still under construction]
 # SMPLSim: Simulating SMPL/SMPLX Humanoids in MUJOCO and Isaac Gym
 
 `smpl_sim` is a pip-installable library containing a modelization of the SMPL humanoid in different simulators (MUJOCO and Isaac Gym). It is a minimal library to support simple humanoid tasks, and is the basis library for doing more complicated tasks such as motion imitation. 
@@ -13,6 +12,18 @@
 This repo supports creating the xml files for SMPL/SMPLH/SMPLX compatible humanoid models in MUJOCO>=3. It also supports creating the humanoid models in Isaac Gym. It also provides a simple PPO implementation for training the humanoid models in MUJOCO. 
 
 ### Commands:
+
+
+Eval Humanoid:
+
+```
+python smpl_sim/smpllib/smpl_local_robot.py 
+python examples/env_humanoid_test.py headless=False
+```
+
+
+Training:
+
 
 ```
 python examples/env_humanoid_test.py headless=False
