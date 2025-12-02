@@ -20,7 +20,7 @@ def generate_taml(betas: torch.Tensor, gender: Gender):
     robot_cfg = {
         "model": "smpl",
         "mesh": False,
-        # "sim": "isaacgym",
+        "sim": "isaacgym",
         "real_weight": True,
         "real_weight_porpotion_capsules": True,
         "real_weight_porpotion_boxes": True,
@@ -52,31 +52,31 @@ def generate_taml(betas: torch.Tensor, gender: Gender):
 
 if __name__ == "__main__":
 
-    # Average neutral body
-    betas = torch.zeros((1, 10))
+    # # Average neutral body
+    # betas = torch.zeros((1, 10))
 
-    # Shorter, stockier body
-    betas = torch.tensor([[-1.5, -0.5, 0.2, 0, 0, 0, 0, 0, 0, 0]])
+    # # Shorter, stockier body
+    # betas = torch.tensor([[-1.5, -0.5, 0.2, 0, 0, 0, 0, 0, 0, 0]])
 
-    # Very tall, slim body
-    betas = torch.tensor([[2.5, 1.0, 0.5, 0, 0, 0, 0, 0, 0, 0]])
+    # # Very tall, slim body
+    # betas = torch.tensor([[2.5, 1.0, 0.5, 0, 0, 0, 0, 0, 0, 0]])
 
-    # Random natural variation
-    betas = torch.randn(1, 10) * 0.5  # normal distribution, mild variation
+    # # Random natural variation
+    # betas = torch.randn(1, 10) * 0.5  # normal distribution, mild variation
 
-    # More extreme stylized character
-    betas = torch.tensor([[3.0, -2.0, 1.5, 0.5, 0, 0, 0, 0, 0, 0]])
+    # # More extreme stylized character
+    # betas = torch.tensor([[3.0, -2.0, 1.5, 0.5, 0, 0, 0, 0, 0, 0]])
 
-    # Slightly taller, leaner body
-    betas = torch.tensor([[0.9, 0.9, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+    # # Slightly taller, leaner body
+    # betas = torch.tensor([[0.9, 0.9, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
 
     all_betas = [
         torch.zeros((1, 10)),
-        torch.tensor([[-1.5, -0.5, 0.2, 0, 0, 0, 0, 0, 0, 0]]),
-        torch.tensor([[2.5, 1.0, 0.5, 0, 0, 0, 0, 0, 0, 0]]),
-        torch.randn(1, 10) * 0.5,
-        torch.tensor([[3.0, -2.0, 1.5, 0.5, 0, 0, 0, 0, 0, 0]]),
-        torch.tensor([[0.9, 0.9, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]),
+        # torch.tensor([[-1.5, -0.5, 0.2, 0, 0, 0, 0, 0, 0, 0]]),
+        # torch.tensor([[2.5, 1.0, 0.5, 0, 0, 0, 0, 0, 0, 0]]),
+        # torch.randn(1, 10) * 0.5,
+        # torch.tensor([[3.0, -2.0, 1.5, 0.5, 0, 0, 0, 0, 0, 0]]),
+        # torch.tensor([[0.9, 0.9, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]),
     ]
 
     genders = ["male", "female", "neutral"]
