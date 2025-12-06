@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from typing import Literal
+import numpy as np
 
 from smpl_sim.smpllib.smpl_local_robot import SMPL_Robot
 from smpl_sim.envs.smplenv import SMPLHumanoid
@@ -9,7 +10,74 @@ import torch
 Gender = Literal["male", "female", "neutral"]
 
 
-def generate_taml(betas: torch.Tensor, gender: Gender):
+def sample_betas_energy_uniform(
+    batch_size: int,
+    num_betas: int = 10,
+    energy_max: float = 20.25,  # E_max = 4.5^2
+    energy_min: float = 0.0,  # set = energy_max for fixed energy
+    per_dim_clip: float = 3.0,
+    rng: np.random.Generator = None,
+) -> np.ndarray:
+    """
+    Sample SMPL betas with:
+        - beta in R^{num_betas}
+        - each component in [-per_dim_clip, per_dim_clip]
+        - energy E = ||beta||^2 in [energy_min, energy_max]
+        - directions uniform on the sphere
+        - energy approximately uniform in [energy_min, energy_max]
+
+    Args:
+        batch_size: number of vectors to sample.
+        num_betas: dimensionality (e.g. 10 or 16).
+        energy_max: maximum energy (e.g. 20.25).
+        energy_min: minimum energy (0 for full range; set equal to energy_max
+                    if you want fixed energy).
+        per_dim_clip: per-component bound (e.g. 3.0).
+        rng: optional np.random.Generator.
+
+    Returns:
+        betas: (batch_size, num_betas) array.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    collected = []
+
+    def enough():
+        return sum(x.shape[0] for x in collected) >= batch_size
+
+    while not enough():
+        # oversample to reduce the number of while-loop iterations
+        n_try = max(batch_size - sum(x.shape[0] for x in collected), 1) * 8
+
+        # 1) directions ~ uniform on sphere
+        z = rng.standard_normal(size=(n_try, num_betas))
+        norms = np.linalg.norm(z, axis=1, keepdims=True)
+        # avoid division by zero
+        norms[norms == 0.0] = 1.0
+        dirs = z / norms
+
+        # 2) energies: uniform in [energy_min, energy_max]
+        E = rng.uniform(energy_min, energy_max, size=(n_try, 1))
+        r = np.sqrt(E)
+
+        # 3) construct candidates
+        cand = dirs * r  # shape (n_try, num_betas)
+
+        # 4) enforce per-dim constraint via rejection
+        mask = np.all(np.abs(cand) <= per_dim_clip, axis=1)
+        cand = cand[mask]
+
+        if cand.size > 0:
+            collected.append(cand)
+
+    betas = np.concatenate(collected, axis=0)[:batch_size]
+    # for smplsim, 4 decimal is good enough
+    betas = np.round(betas, 4)
+    return betas
+
+
+def generate_yaml(betas: torch.Tensor, gender: Gender):
     """Generate a custom humanoid model and save it as an MJCF XML file.
     Args:
         betas (torch.Tensor): Shape parameters for the SMPL model, shape (1, 10).
@@ -52,35 +120,29 @@ def generate_taml(betas: torch.Tensor, gender: Gender):
 
 if __name__ == "__main__":
 
-    # # Average neutral body
-    # betas = torch.zeros((1, 10))
+    num_betas: int = 10
+    batch_size: int = 64
+    per_dim_clip: float = 3.0
+    energy_max: float = 20.25
+    energy_min: float = 0.0
 
-    # # Shorter, stockier body
-    # betas = torch.tensor([[-1.5, -0.5, 0.2, 0, 0, 0, 0, 0, 0, 0]])
+    rng = np.random.default_rng(46)
 
-    # # Very tall, slim body
-    # betas = torch.tensor([[2.5, 1.0, 0.5, 0, 0, 0, 0, 0, 0, 0]])
+    all_betas = sample_betas_energy_uniform(
+            batch_size=batch_size,
+            num_betas=num_betas,
+            per_dim_clip=per_dim_clip,
+            energy_max=energy_max,
+            energy_min=energy_min,
+            rng=rng,
+        )
+    
+    # print(all_betas.shape)
 
-    # # Random natural variation
-    # betas = torch.randn(1, 10) * 0.5  # normal distribution, mild variation
+    # genders = ["male", "female", "neutral"]
 
-    # # More extreme stylized character
-    # betas = torch.tensor([[3.0, -2.0, 1.5, 0.5, 0, 0, 0, 0, 0, 0]])
+    # # for gender in genders:
+    for betas in all_betas:
+        # print(torch.from_numpy(betas).unsqueeze(0))
 
-    # # Slightly taller, leaner body
-    # betas = torch.tensor([[0.9, 0.9, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
-
-    all_betas = [
-        torch.zeros((1, 10)),
-        # torch.tensor([[-1.5, -0.5, 0.2, 0, 0, 0, 0, 0, 0, 0]]),
-        # torch.tensor([[2.5, 1.0, 0.5, 0, 0, 0, 0, 0, 0, 0]]),
-        # torch.randn(1, 10) * 0.5,
-        # torch.tensor([[3.0, -2.0, 1.5, 0.5, 0, 0, 0, 0, 0, 0]]),
-        # torch.tensor([[0.9, 0.9, 0.9, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]),
-    ]
-
-    genders = ["male", "female", "neutral"]
-
-    for gender in genders:
-        for betas in all_betas:
-            generate_taml(betas, gender)
+        generate_yaml(torch.from_numpy(betas).unsqueeze(0), "neutral")
