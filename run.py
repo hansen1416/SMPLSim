@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+import random
 from typing import Literal
 import numpy as np
 
@@ -9,6 +9,9 @@ import torch
 
 Gender = Literal["male", "female", "neutral"]
 
+def deterministic_hex4(rng: np.random.Generator):
+    n = rng.integers(0, 2**32, dtype=np.uint32)
+    return int(n).to_bytes(4, "big").hex()
 
 def sample_betas_energy_uniform(
     batch_size: int,
@@ -77,7 +80,7 @@ def sample_betas_energy_uniform(
     return betas
 
 
-def generate_yaml(betas: torch.Tensor, gender: Gender):
+def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
     """Generate a custom humanoid model and save it as an MJCF XML file.
     Args:
         betas (torch.Tensor): Shape parameters for the SMPL model, shape (1, 10).
@@ -101,16 +104,20 @@ def generate_yaml(betas: torch.Tensor, gender: Gender):
 
     output_folder = "output"
 
-    # generate a random string to avoid overwriting files
-    random_str = os.urandom(4).hex()
-
     output_path = os.path.join(
-        output_folder, f"custom_simple2_{gender}_{random_str}.xml"
+        output_folder, f"{name}_smpl.xml"
+    )
+
+    betas_path = os.path.join(
+        output_folder, f"{name}_betas.pt"
     )
 
     # Export to MJCF
     smpl_robot.write_xml(output_path)
     print(f"Saved humanoid to {output_path}")
+
+    torch.save(betas, betas_path)
+    print(f"Saved humanoid betas to {betas_path}")
 
     # xml_string = smpl_robot.export_xml_string().decode("utf-8")
 
@@ -143,6 +150,5 @@ if __name__ == "__main__":
 
     # # for gender in genders:
     for betas in all_betas:
-        # print(torch.from_numpy(betas).unsqueeze(0))
-
-        generate_yaml(torch.from_numpy(betas).unsqueeze(0), "neutral")
+        random_str = deterministic_hex4(rng)
+        generate_yaml(torch.from_numpy(betas).unsqueeze(0), "neutral", random_str)
