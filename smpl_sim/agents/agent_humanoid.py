@@ -12,7 +12,7 @@ import os
 import sys
 import os.path as osp
 from tqdm import tqdm
-import wandb
+# import wandb
 import numpy as np
 import multiprocessing
 
@@ -190,7 +190,7 @@ class AgentHumanoid(AgentPPO):
             if "log_eval" in info:
                 log_data.update(info["log_eval"])
             
-            wandb.log(data=log_data, step=self.epoch)
+            # wandb.log(data=log_data, step=self.epoch)
 
 
     def optimize_policy(self,save_model=True):

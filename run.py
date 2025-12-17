@@ -88,21 +88,49 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
 
     """
 
+    # robot_cfg = {
+    #     "model": "smpl",
+    #     "mesh": False,
+    #     "sim": "isaacgym",
+    #     "real_weight": True,
+    #     "real_weight_porpotion_capsules": True,
+    #     "real_weight_porpotion_boxes": True,
+    #     # Optional: expose density
+    #     # "geom_params": {"density": {"lb": [1000.0], "ub": [10.0]}},  # ~1000–1200 kg/m^3
+    # }
+
     robot_cfg = {
-        "model": "smpl",
-        "mesh": False,
+        "model": "smpl",              # fewer bodies/joints than smplx → fewer self-collisions
         "sim": "isaacgym",
-        "real_weight": True,
-        "real_weight_porpotion_capsules": True,
-        "real_weight_porpotion_boxes": True,
-        # Optional: expose density
-        # "geom_params": {"density": {"lb": [1000.0], "ub": [10.0]}},  # ~1000–1200 kg/m^3
+
+        "mesh": False,                # avoid mesh/convex-hull contacts
+        "box_body": False,            # boxes create sharp-edge contact explosions in PhysX
+        "replace_feet": True,         # simplify feet collision proxy
+        "remove_toe": True,           # toes are a frequent instability source
+        "big_ankle": False,           # reduces ankle–shin interpenetration risk
+        "freeze_hand": True,          # (SMPL: mostly irrelevant; harmless)
+
+        "ball_joint": False,          # keep simpler joint model
+        "rel_joint_lm": False,        # keep default joint limits (avoid “too-loose” joints)
+        "upright_start": True,       # keep default construction pose
+
+        "real_weight": False,          # more reasonable mass/inertia distribution
+        "real_weight_porpotion_capsules": False,
+        "real_weight_porpotion_boxes": False,
+
+        "create_vel_sensors": False,
+
+        # do NOT randomize geometry/joints at first
+        "body_params": {},
+        "joint_params": {},
+        "geom_params": {},
+        "actuator_params": {},
     }
 
     smpl_robot = SMPL_Robot(robot_cfg)
     smpl_robot.load_from_skeleton(betas=betas, gender=[SMPLHumanoid.GENDER2NUM[gender]])
 
-    output_folder = "output"
+    output_folder = "/home/hlz/repos/ASE/ase/data/assets/mjcf/smpl/"
 
     output_path = os.path.join(
         output_folder, f"{name}_smpl.xml"
@@ -148,7 +176,13 @@ if __name__ == "__main__":
 
     # genders = ["male", "female", "neutral"]
 
+    random_names = []
+
     # # for gender in genders:
     for betas in all_betas:
         random_str = deterministic_hex4(rng)
         generate_yaml(torch.from_numpy(betas).unsqueeze(0), "neutral", random_str)
+        random_names.append(random_str)
+
+    for n in random_names:
+        print(f"- mjcf/smpl/{n}_smpl.xml")

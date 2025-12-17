@@ -14,7 +14,7 @@ sys.path.append(os.getcwd())
 
 import torch
 import numpy as np
-import wandb
+# import wandb
 
 from smpl_sim.utils.flags import flags
 from smpl_sim.agents import agent_dict
@@ -39,24 +39,24 @@ def main(cfg: DictConfig) -> None:
     )
     cfg.output_dir = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
 
-    if (not cfg.no_log) and (not cfg.test):
-        group = cfg.get("group", cfg.learning.agent_name)
-        exp_name = (
-            f"{cfg.learning.agent_name}_{cfg.env.task}"
-            if (cfg.exp_name is None) or (cfg.exp_name == "none")
-            else cfg.exp_name
-        )
-        wandb.init(
-            project="phc_mjx",
-            group=group,
-            resume=not cfg.resume_str is None,
-            id=cfg.resume_str,
-            notes=cfg.notes,
-            config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False),
-        )
-        # wandb.config.update(dict(cfg), allow_val_change=True)
-        wandb.run.name = cfg.exp_name
-        wandb.run.save()
+    # if (not cfg.no_log) and (not cfg.test):
+    #     group = cfg.get("group", cfg.learning.agent_name)
+    #     exp_name = (
+    #         f"{cfg.learning.agent_name}_{cfg.env.task}"
+    #         if (cfg.exp_name is None) or (cfg.exp_name == "none")
+    #         else cfg.exp_name
+    #     )
+    #     wandb.init(
+    #         project="phc_mjx",
+    #         group=group,
+    #         resume=not cfg.resume_str is None,
+    #         id=cfg.resume_str,
+    #         notes=cfg.notes,
+    #         config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=False),
+    #     )
+    #     # wandb.config.update(dict(cfg), allow_val_change=True)
+    #     wandb.run.name = cfg.exp_name
+    #     wandb.run.save()
 
     dtype = torch.float32
     torch.set_default_dtype(dtype)
