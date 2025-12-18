@@ -367,6 +367,17 @@ class Skeleton:
                 bone.end = bone.pos.copy() + 0.002
             else:
                 bone.end = sum([bone_c.pos for bone_c in bone.child]) / len(bone.child)
+
+        # --- Fix A: stabilize trunk directions (avoid averaging shoulders into Chest axis) ---
+        # This ensures Torso/Spine/Chest geoms point along the spine chain instead of drifting 
+        # due to “mean of children” (which is exactly what can create rare outliers).
+        # def _force_end(parent, child):
+        #     if parent in self.name2bone and child in self.name2bone:
+        #         self.name2bone[parent].end = self.name2bone[child].pos.copy()
+
+        # _force_end("Torso", "Spine")
+        # _force_end("Spine", "Chest")
+        # _force_end("Chest", "Neck")
                 
     def construct_tree(self,
             template_fname=files('smpl_sim').joinpath('data/assets/mjcf/humanoid_template_local.xml'),
@@ -538,7 +549,7 @@ class Skeleton:
         e1 = np.zeros(3)
         e2 = bone.end.copy() + offset
         if bone.name in ["Torso", "Chest", "Spine"]:
-            seperation = 0.45
+            seperation = 0.6
         else:
             seperation = 0.2
 
