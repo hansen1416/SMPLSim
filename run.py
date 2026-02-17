@@ -88,17 +88,6 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
 
     """
 
-    # robot_cfg = {
-    #     "model": "smpl",
-    #     "mesh": False,
-    #     "sim": "isaacgym",
-    #     "real_weight": True,
-    #     "real_weight_porpotion_capsules": True,
-    #     "real_weight_porpotion_boxes": True,
-    #     # Optional: expose density
-    #     # "geom_params": {"density": {"lb": [1000.0], "ub": [10.0]}},  # ~1000–1200 kg/m^3
-    # }
-
     robot_cfg = {
         "model": "smpl",              # fewer bodies/joints than smplx → fewer self-collisions
         "sim": "isaacgym",
@@ -133,19 +122,19 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
     output_folder = "/home/hlz/repos/ASE/ase/data/assets/mjcf/smpl/"
 
     output_path = os.path.join(
-        output_folder, f"{name}_smpl.xml"
+        output_folder, f"{gender}_{name}_smpl.xml"
     )
 
-    betas_path = os.path.join(
-        output_folder, f"{name}_betas.pt"
-    )
+    # betas_path = os.path.join(
+    #     output_folder, f"{name}_betas.pt"
+    # )
 
     # Export to MJCF
     smpl_robot.write_xml(output_path)
     print(f"Saved humanoid to {output_path}")
 
-    torch.save(betas, betas_path)
-    print(f"Saved humanoid betas to {betas_path}")
+    # torch.save(betas, betas_path)
+    # print(f"Saved humanoid betas to {betas_path}")
 
     # xml_string = smpl_robot.export_xml_string().decode("utf-8")
 
@@ -155,34 +144,35 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
 
 if __name__ == "__main__":
 
-    num_betas: int = 10
-    batch_size: int = 64
-    per_dim_clip: float = 3.0
-    energy_max: float = 20.25
-    energy_min: float = 0.0
+    # num_betas: int = 10
+    # batch_size: int = 64
+    # per_dim_clip: float = 3.0
+    # energy_max: float = 20.25
+    # energy_min: float = 0.0
 
-    rng = np.random.default_rng(46)
+    # rng = np.random.default_rng(46)
 
-    all_betas = sample_betas_energy_uniform(
-            batch_size=batch_size,
-            num_betas=num_betas,
-            per_dim_clip=per_dim_clip,
-            energy_max=energy_max,
-            energy_min=energy_min,
-            rng=rng,
-        )
-    
-    # print(all_betas.shape)
+    # all_betas = sample_betas_energy_uniform(
+    #         batch_size=batch_size,
+    #         num_betas=num_betas,
+    #         per_dim_clip=per_dim_clip,
+    #         energy_max=energy_max,
+    #         energy_min=energy_min,
+    #         rng=rng,
+    #     )
+
+    all_betas = all_betas = torch.load(os.path.join("/home/hlz/repos/humos/humos/all_betas.pt"), weights_only=False)
 
     # genders = ["male", "female", "neutral"]
-
-    random_names = []
+    # random_names = []
 
     # # for gender in genders:
-    for betas in all_betas:
-        random_str = deterministic_hex4(rng)
-        generate_yaml(torch.from_numpy(betas).unsqueeze(0), "neutral", random_str)
-        random_names.append(random_str)
+    for beta_key, betas in all_betas.items():
+        for gender in ["male", "female"]:
+            # random_str = deterministic_hex4(rng)
+            generate_yaml(betas.unsqueeze(0), gender, beta_key)
 
-    for n in random_names:
-        print(f"- mjcf/smpl/{n}_smpl.xml")
+            print(f"- mjcf/smpl/{gender}_{beta_key}_smpl.xml")
+
+    # for n in random_names:
+    #     print(f"- mjcf/smpl/{n}_smpl.xml")
