@@ -13,71 +13,55 @@ def deterministic_hex4(rng: np.random.Generator):
     n = rng.integers(0, 2**32, dtype=np.uint32)
     return int(n).to_bytes(4, "big").hex()
 
-def sample_betas_energy_uniform(
+def sample_betas_uniform(
     batch_size: int,
     num_betas: int = 10,
-    energy_max: float = 20.25,  # E_max = 4.5^2
-    energy_min: float = 0.0,  # set = energy_max for fixed energy
-    per_dim_clip: float = 3.0,
+    low: float = -2.0,
+    high: float = 2.0,
     rng: np.random.Generator = None,
 ) -> np.ndarray:
     """
-    Sample SMPL betas with:
-        - beta in R^{num_betas}
-        - each component in [-per_dim_clip, per_dim_clip]
-        - energy E = ||beta||^2 in [energy_min, energy_max]
-        - directions uniform on the sphere
-        - energy approximately uniform in [energy_min, energy_max]
+    Sample SMPL / SMPL-X betas from a uniform distribution in the interval [low, high].
+
+    This gives the most even coverage of the shape space within the chosen bounds.
+    Useful when:
+    - you want to avoid the clustering around zero that happens with normal sampling
+    - you want predictable / reproducible diversity across the full selected range
+    - you're testing physics stability across many shape variations
+
+    Recommended ranges (2025–2026 practice):
+      [-2.0, 2.0]   → very safe, mostly natural bodies
+      [-2.5, 2.5]   → good diversity, still quite stable in Isaac Gym / MJX
+      [-3.0, 3.0]   → noticeable extremes, expect ~5–15% unstable bodies
+      [-3.5, 3.5]   → aggressive — many interpenetrating / exploding cases
 
     Args:
-        batch_size: number of vectors to sample.
-        num_betas: dimensionality (e.g. 10 or 16).
-        energy_max: maximum energy (e.g. 20.25).
-        energy_min: minimum energy (0 for full range; set equal to energy_max
-                    if you want fixed energy).
-        per_dim_clip: per-component bound (e.g. 3.0).
-        rng: optional np.random.Generator.
+        batch_size: Number of beta vectors to generate
+        num_betas: Usually 10 (SMPL) or 10–16 (SMPL-X)
+        low: Lower bound of the uniform interval
+        high: Upper bound of the uniform interval (must be > low)
+        rng: Optional numpy random generator for reproducibility
 
     Returns:
-        betas: (batch_size, num_betas) array.
+        betas: shape (batch_size, num_betas), dtype float32
     """
-    if rng is None:
-        rng = np.random.default_rng()
 
-    collected = []
+    if high <= low:
+        raise ValueError("high must be strictly greater than low")
 
-    def enough():
-        return sum(x.shape[0] for x in collected) >= batch_size
+    # Uniform sampling in [low, high]
+    betas = rng.uniform(low=low, high=high, size=(batch_size, num_betas))
 
-    while not enough():
-        # oversample to reduce the number of while-loop iterations
-        n_try = max(batch_size - sum(x.shape[0] for x in collected), 1) * 8
+    all_betas = {}
 
-        # 1) directions ~ uniform on sphere
-        z = rng.standard_normal(size=(n_try, num_betas))
-        norms = np.linalg.norm(z, axis=1, keepdims=True)
-        # avoid division by zero
-        norms[norms == 0.0] = 1.0
-        dirs = z / norms
+    for i in range(betas.shape[0]):
+        random_str = deterministic_hex4(rng)
 
-        # 2) energies: uniform in [energy_min, energy_max]
-        E = rng.uniform(energy_min, energy_max, size=(n_try, 1))
-        r = np.sqrt(E)
+        all_betas[random_str] = torch.as_tensor(betas[i], dtype=torch.float32)
 
-        # 3) construct candidates
-        cand = dirs * r  # shape (n_try, num_betas)
-
-        # 4) enforce per-dim constraint via rejection
-        mask = np.all(np.abs(cand) <= per_dim_clip, axis=1)
-        cand = cand[mask]
-
-        if cand.size > 0:
-            collected.append(cand)
-
-    betas = np.concatenate(collected, axis=0)[:batch_size]
     # for smplsim, 4 decimal is good enough
-    betas = np.round(betas, 4)
-    return betas
+    # betas = np.round(betas, 4)
+    return all_betas
 
 
 def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
@@ -96,7 +80,7 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
         "box_body": False,            # boxes create sharp-edge contact explosions in PhysX
         "replace_feet": True,         # simplify feet collision proxy
         "remove_toe": True,           # toes are a frequent instability source
-        "big_ankle": False,           # reduces ankle–shin interpenetration risk
+        "big_ankle": False,           # reduces ankle-shin interpenetration risk
         "freeze_hand": True,          # (SMPL: mostly irrelevant; harmless)
 
         "ball_joint": False,          # keep simpler joint model
@@ -144,27 +128,21 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
 
 if __name__ == "__main__":
 
-    # num_betas: int = 10
-    # batch_size: int = 64
-    # per_dim_clip: float = 3.0
-    # energy_max: float = 20.25
-    # energy_min: float = 0.0
+    rng = np.random.default_rng(46)
 
-    # rng = np.random.default_rng(46)
+    all_betas = sample_betas_uniform(
+            batch_size=64,
+            num_betas=10,
+            low = -3.0,
+            high = 3.0,
+            rng=rng,
+        )
 
-    # all_betas = sample_betas_energy_uniform(
-    #         batch_size=batch_size,
-    #         num_betas=num_betas,
-    #         per_dim_clip=per_dim_clip,
-    #         energy_max=energy_max,
-    #         energy_min=energy_min,
-    #         rng=rng,
-    #     )
+    save_paths = [os.path.join("/home/hlz/repos/humos/humos/all_betas.pt"),
+                  os.path.join("/home/hlz/repos/ASE/ase/data/assets/all_betas.pt")]
 
-    all_betas = all_betas = torch.load(os.path.join("/home/hlz/repos/humos/humos/all_betas.pt"), weights_only=False)
-
-    # genders = ["male", "female", "neutral"]
-    # random_names = []
+    for save_path in save_paths:
+        torch.save(all_betas, save_path)
 
     # # for gender in genders:
     for beta_key, betas in all_betas.items():

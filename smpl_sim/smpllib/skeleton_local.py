@@ -588,6 +588,11 @@ class Skeleton:
             # if bone.name in ["Spine"]:
             # real_valued *= 0.01 # ZL Hack: shrinkage
 
+            # Extra safety for PhysX / IsaacGym: shrink collisions slightly and subtract a small margin
+            # TO CHANGE SIZE, TRY TUNE THIS
+            # real_valued = float(real_valued) * self.collision_scale_capsule
+            # real_valued = max(real_valued - self.collision_margin, 1e-4)
+
             # g_attr["size"] = "{0:.4f}".format(*template_attributes["size"])
             g_attr["size"] = "{0:.4f}".format(*real_valued)
 

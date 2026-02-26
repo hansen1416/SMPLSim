@@ -633,6 +633,18 @@ class Geom:
     def sync_node(self):
         # self.node.attrib.pop("name", None)
         if not self.size is None:
+
+            # # fix unstable humanoid ==============
+            # if self.type == "capsule":
+            #     name = self.body.name   # e.g. "L_Knee", "R_Elbow", etc.
+            #     if any(s in name for s in ["Torso", "Spine", "Chest", "Neck", "Head"]):
+            #         # Global shrink factor – start with 0.92–0.96; tune per problematic model
+            #         self.size[0] *= 0.92          # radius
+
+                # Optional: also slightly increase length to compensate visually/physics-wise
+                # self.size[1] *= 1.05   # length direction
+            # fix unstable humanoid ==============
+
             self.node.attrib["size"] = " ".join(
                 [f"{x:.6f}".rstrip("0").rstrip(".") for x in self.size])
         self.node.attrib["density"] = " ".join(
@@ -1495,6 +1507,27 @@ class SMPL_Robot:
         self.local_coord = (self.tree.getroot().find(
             ".//compiler").attrib["coordinate"] == "local")
         root = self.tree.getroot().find("worldbody").find("body")
+
+        # ──── ADD THE COLLISION MARGIN SETTINGS HERE ────────────────────────
+        compiler = self.tree.getroot().find("compiler")
+
+        # # Create <compiler> if it doesn't exist yet (rare, but safe)
+        # if compiler is None:
+        #     compiler = Element("compiler")
+        #     # Insert it near the beginning, right after <mujoco>
+        #     self.tree.getroot().insert(0, compiler)
+
+        # These are the important lines:
+        # compiler.attrib["contact_offset"] = "0.02"   # distance at which contacts start being considered
+        # compiler.attrib["margin"]         = "0.01"   # inner margin — helps reduce explosive corrections
+
+        # compiler.attrib["inertiafromgeom"] = "true"   # more stable inertia calculation in some cases
+
+        # # You can also force coordinate & angle if you want to be extra sure
+        compiler.attrib["coordinate"]     = "local"
+        compiler.attrib["angle"]          = "radian"
+
+        # ────────────────────────────────────────────────────────────────
 
         self.add_body(root, None)
         self.init_bodies()
