@@ -103,7 +103,7 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
     smpl_robot = SMPL_Robot(robot_cfg)
     smpl_robot.load_from_skeleton(betas=betas, gender=[SMPLHumanoid.GENDER2NUM[gender]])
 
-    output_folder = "/home/hlz/repos/ASE/ase/data/assets/mjcf/smpl/"
+    output_folder = "/home/hlz/repos/hhi/ase/data/assets/mjcf/smpl/"
 
     output_path = os.path.join(
         output_folder, f"{gender}_{name}_smpl.xml"
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         )
 
     save_paths = [os.path.join("/home/hlz/repos/humos/humos/all_betas.pt"),
-                  os.path.join("/home/hlz/repos/ASE/ase/data/assets/all_betas.pt")]
+                  os.path.join("/home/hlz/repos/hhi/ase/data/assets/all_betas.pt")]
 
     for save_path in save_paths:
         torch.save(all_betas, save_path)
