@@ -9,11 +9,9 @@ import torch
 
 Gender = Literal["male", "female", "neutral"]
 
-
 def deterministic_hex4(rng: np.random.Generator):
     n = rng.integers(0, 2**32, dtype=np.uint32)
     return int(n).to_bytes(4, "big").hex()
-
 
 def sample_betas_uniform(
     batch_size: int,
@@ -74,25 +72,27 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
 
     """
 
-    # robot_type = "smplx"
-    robot_type = "smpl"
-
     robot_cfg = {
-        "model": robot_type,  # fewer bodies/joints than smplx → fewer self-collisions
+        "model": "smpl",              # fewer bodies/joints than smplx → fewer self-collisions
         "sim": "isaacgym",
-        "mesh": False,  # avoid mesh/convex-hull contacts
-        "box_body": False,  # boxes create sharp-edge contact explosions in PhysX
-        "replace_feet": True,  # simplify feet collision proxy
-        "remove_toe": True,  # toes are a frequent instability source
-        "big_ankle": False,  # reduces ankle-shin interpenetration risk
-        "freeze_hand": True,  # (SMPL: mostly irrelevant; harmless)
-        "ball_joint": False,  # keep simpler joint model
-        "rel_joint_lm": False,  # keep default joint limits (avoid “too-loose” joints)
-        "upright_start": True,  # keep default construction pose
-        "real_weight": False,  # more reasonable mass/inertia distribution
+
+        "mesh": False,                # avoid mesh/convex-hull contacts
+        "box_body": False,            # boxes create sharp-edge contact explosions in PhysX
+        "replace_feet": True,         # simplify feet collision proxy
+        "remove_toe": True,           # toes are a frequent instability source
+        "big_ankle": False,           # reduces ankle-shin interpenetration risk
+        "freeze_hand": True,          # (SMPL: mostly irrelevant; harmless)
+
+        "ball_joint": False,          # keep simpler joint model
+        "rel_joint_lm": False,        # keep default joint limits (avoid “too-loose” joints)
+        "upright_start": True,       # keep default construction pose
+
+        "real_weight": False,          # more reasonable mass/inertia distribution
         "real_weight_porpotion_capsules": False,
         "real_weight_porpotion_boxes": False,
+
         "create_vel_sensors": False,
+
         # do NOT randomize geometry/joints at first
         "body_params": {},
         "joint_params": {},
@@ -103,13 +103,27 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
     smpl_robot = SMPL_Robot(robot_cfg)
     smpl_robot.load_from_skeleton(betas=betas, gender=[SMPLHumanoid.GENDER2NUM[gender]])
 
-    output_folder = f"/home/hlz/repos/ProtoMotions/protomotions/data/assets/mjcf/multi-shape-{robot_type}/"
+    output_folder = "/home/hlz/repos/hhi/ase/data/assets/mjcf/smpl/"
 
-    output_path = os.path.join(output_folder, f"{gender}_{name}_{robot_type}.xml")
+    output_path = os.path.join(
+        output_folder, f"{gender}_{name}_smpl.xml"
+    )
+
+    # betas_path = os.path.join(
+    #     output_folder, f"{name}_betas.pt"
+    # )
 
     # Export to MJCF
     smpl_robot.write_xml(output_path)
     print(f"Saved humanoid to {output_path}")
+
+    # torch.save(betas, betas_path)
+    # print(f"Saved humanoid betas to {betas_path}")
+
+    # xml_string = smpl_robot.export_xml_string().decode("utf-8")
+
+    # with open("custom_humanoid.xml", "w") as f:
+    #     f.write(xml_string)
 
 
 if __name__ == "__main__":
@@ -117,17 +131,15 @@ if __name__ == "__main__":
     rng = np.random.default_rng(46)
 
     all_betas = sample_betas_uniform(
-        batch_size=64,
-        num_betas=10,
-        low=-3.0,
-        high=3.0,
-        rng=rng,
-    )
+            batch_size=64,
+            num_betas=10,
+            low = -3.0,
+            high = 3.0,
+            rng=rng,
+        )
 
-    save_paths = [
-        os.path.join("/home/hlz/repos/humos/humos/all_betas.pt"),
-        os.path.join("/home/hlz/repos/hhi/ase/data/assets/all_betas.pt"),
-    ]
+    save_paths = [os.path.join("/home/hlz/repos/humos/humos/all_betas.pt"),
+                  os.path.join("/home/hlz/repos/hhi/ase/data/assets/all_betas.pt")]
 
     for save_path in save_paths:
         torch.save(all_betas, save_path)
@@ -137,3 +149,8 @@ if __name__ == "__main__":
         for gender in ["male", "female"]:
             # random_str = deterministic_hex4(rng)
             generate_yaml(betas.unsqueeze(0), gender, beta_key)
+
+            print(f"- mjcf/smpl/{gender}_{beta_key}_smpl.xml")
+
+    # for n in random_names:
+    #     print(f"- mjcf/smpl/{n}_smpl.xml")
