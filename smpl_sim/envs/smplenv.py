@@ -215,7 +215,7 @@ class SMPLHumanoid:
 
         xml = self._smpl_robot.export_xml_string().decode("utf-8")
         xml = smplxadd.smpl_add_camera(xml)
-        xml = smplxadd.smpl_change_world(xml)
+        # xml = smplxadd.smpl_change_world(xml)
         # xml = smplxadd.smpl_add_sensors(xml)
         # Make model and data
         self.mj_model = mujoco.MjModel.from_xml_string(xml)
