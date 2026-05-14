@@ -4,12 +4,12 @@ from lxml import etree
 def smpl_change_world(xml: str):
     tree = etree.XML(xml)
     texplane = tree.xpath("//texture[@name='texplane']")[0]
-    newtexplane = etree.fromstring('<texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="100" height="100"></texture>')
-    texplane.addnext(newtexplane)
+    # newtexplane = etree.fromstring('<texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" width="100" height="100"></texture>')
+    # texplane.addnext(newtexplane)
     texplane.getparent().remove(texplane)
     matplane = tree.xpath("//material[@name='MatPlane']")[0]
-    matplane.addnext(
-    etree.fromstring('<material name="MatPlane" reflectance="0.5" texture="texplane" texrepeat="1 1" texuniform="true"></material>'))
+    # matplane.addnext(
+    # etree.fromstring('<material name="MatPlane" reflectance="0.5" texture="texplane" texrepeat="1 1" texuniform="true"></material>'))
     matplane.getparent().remove(matplane)
     return etree.tostring(tree)
 
