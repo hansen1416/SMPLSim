@@ -81,7 +81,7 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
         "model": robot_type,  # fewer bodies/joints than smplx → fewer self-collisions
         "sim": "isaacgym",
         "mesh": False,  # avoid mesh/convex-hull contacts
-        "box_body": False,  # boxes create sharp-edge contact explosions in PhysX
+        "box_body": True,  # boxes create sharp-edge contact explosions in PhysX
         "replace_feet": True,  # simplify feet collision proxy
         "remove_toe": True,  # toes are a frequent instability source
         "big_ankle": False,  # reduces ankle-shin interpenetration risk
@@ -103,7 +103,7 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
     smpl_robot = SMPL_Robot(robot_cfg)
     smpl_robot.load_from_skeleton(betas=betas, gender=[SMPLHumanoid.GENDER2NUM[gender]])
 
-    output_folder = f"/home/hlz/repos/ProtoMotions/protomotions/data/assets/mjcf/multi-shape-{robot_type}/"
+    output_folder = f"/home/hlz/repos/ProtoMotions/protomotions/data/assets/mjcf/{robot_type}_mor/"
 
     output_path = os.path.join(output_folder, f"{gender}_{name}_{robot_type}.xml")
 
@@ -129,11 +129,18 @@ if __name__ == "__main__":
         os.path.join("/home/hlz/repos/hhi/ase/data/assets/all_betas.pt"),
     ]
 
-    for save_path in save_paths:
-        torch.save(all_betas, save_path)
+    # for save_path in save_paths:
+    #     torch.save(all_betas, save_path)
+
+    # selected_gender_beta = [("male", "0e26b88d")]
+    selected_gender_beta = None
 
     # # for gender in genders:
     for beta_key, betas in all_betas.items():
         for gender in ["male", "female"]:
+
+            if selected_gender_beta is not None and (gender, beta_key) not in selected_gender_beta:
+                continue
+
             # random_str = deterministic_hex4(rng)
             generate_yaml(betas.unsqueeze(0), gender, beta_key)
