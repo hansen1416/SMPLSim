@@ -105,6 +105,8 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
 
     output_folder = f"/home/hlz/repos/ProtoMotions/protomotions/data/assets/mjcf/{robot_type}_mor/"
 
+    output_folder = "/home/hlz/repos/hhi/ase/data/assets/mjcf/smpl/"
+
     output_path = os.path.join(output_folder, f"{gender}_{name}_{robot_type}.xml")
 
     # Export to MJCF
