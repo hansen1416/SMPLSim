@@ -561,12 +561,8 @@ class Skeleton:
         hull_params = self.hull_dict[bone.name]
 
         if g_attr["type"] == "capsule":
-            g_attr["fromto"] = "{0:.4f} {1:.4f} {2:.4f} {3:.4f} {4:.4f} {5:.4f}".format(*np.concatenate([e1, e2]))
-
             side_len = np.linalg.norm(e2 - e1)
-            # radius = 0.067
             # V = np.pi * radius ** 2 * ((4/3) * radius + side_len)
-
             roots = np.polynomial.polynomial.Polynomial([-hull_params['volume'], 0, side_len * np.pi, 4 / 3 * np.pi]).roots()
             real_valued = roots.real[abs(roots.imag) < 1e-5]
             real_valued = real_valued[real_valued > 0]
@@ -595,6 +591,21 @@ class Skeleton:
 
             # g_attr["size"] = "{0:.4f}".format(*template_attributes["size"])
             g_attr["size"] = "{0:.4f}".format(*real_valued)
+
+            # Place fromto so the capsule surface sits at a fixed gap from each joint,
+            # making the visible gap consistent regardless of body fatness (betas).
+            # Old separation-based approach was radius-unaware: fat bodies got near-zero
+            # gaps and thin bodies got large gaps because radii scale with volume.
+            desired_gap = 0.01  # metres; tune this
+            radius = float(real_valued)
+            bone_vec = bone.end.copy() + offset
+            bone_len = np.linalg.norm(bone_vec)
+            bone_dir = bone_vec / bone_len
+            e1 = bone_dir * (radius + desired_gap)
+            e2 = bone_vec - bone_dir * (radius + desired_gap)
+            if np.linalg.norm(e2 - e1) < 1e-4:  # bone too short to fit capsule + gaps
+                e1 = e2 = bone_vec * 0.5
+            g_attr["fromto"] = "{0:.4f} {1:.4f} {2:.4f} {3:.4f} {4:.4f} {5:.4f}".format(*np.concatenate([e1, e2]))
 
         elif g_attr["type"] == "box":
             pos = (e1 + e2) / 2
