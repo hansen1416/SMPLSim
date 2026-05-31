@@ -596,15 +596,21 @@ class Skeleton:
             # making the visible gap consistent regardless of body fatness (betas).
             # Old separation-based approach was radius-unaware: fat bodies got near-zero
             # gaps and thin bodies got large gaps because radii scale with volume.
-            desired_gap = 0.01  # metres; tune this
+            desired_gap = 0.03  # metres; tune this
+            min_half_len = 1e-3  # minimum capsule axis half-length to stay non-degenerate
             radius = float(real_valued)
             bone_vec = bone.end.copy() + offset
             bone_len = np.linalg.norm(bone_vec)
             bone_dir = bone_vec / bone_len
-            e1 = bone_dir * (radius + desired_gap)
-            e2 = bone_vec - bone_dir * (radius + desired_gap)
-            if np.linalg.norm(e2 - e1) < 1e-4:  # bone too short to fit capsule + gaps
-                e1 = e2 = bone_vec * 0.5
+            # Reduce gap gracefully if the bone is too short to fit radius+gap at both ends
+            actual_gap = min(desired_gap, (bone_len - 2 * radius) / 2 - min_half_len)
+            actual_gap = max(actual_gap, 0.0)
+            e1 = bone_dir * (radius + actual_gap)
+            e2 = bone_vec - bone_dir * (radius + actual_gap)
+            if np.linalg.norm(e2 - e1) < min_half_len * 2:  # bone shorter than capsule diameter
+                mid = bone_vec * 0.5
+                e1 = mid - bone_dir * min_half_len
+                e2 = mid + bone_dir * min_half_len
             g_attr["fromto"] = "{0:.4f} {1:.4f} {2:.4f} {3:.4f} {4:.4f} {5:.4f}".format(*np.concatenate([e1, e2]))
 
         elif g_attr["type"] == "box":

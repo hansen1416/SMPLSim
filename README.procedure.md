@@ -35,75 +35,42 @@ produces self.hull_dict. Only hull_dict goes into load_from_offsets, not skin_we
   Then forward_bvh (line 294) sets bone.pos = bone.offset — the body's pos attribute in the XML is this local offset from its
   parent. This directly encodes the limb geometry.
 
-  ---
-  3. Fixed body hierarchy
+------
 
-  Correct. The hierarchy is fixed by parents_dict from SMPL topology, e.g.:
-  Pelvis → Torso → Spine → Chest → Neck → Head
-                          → L_Thorax → L_Shoulder → L_Elbow → L_Wrist → L_Hand
-           → L_Hip → L_Knee → L_Ankle → L_Toe
-  This is passed into load_from_offsets and determines the nested <body> structure in the XML.
+3. Fixed body hierarchy
 
-  ---
+Correct. The hierarchy is fixed by parents_dict from SMPL topology, e.g.:
+Pelvis → Torso → Spine → Chest → Neck → Head
+                        → L_Thorax → L_Shoulder → L_Elbow → L_Wrist → L_Hand
+          → L_Hip → L_Knee → L_Ankle → L_Toe
+This is passed into load_from_offsets and determines the nested <body> structure in the XML.
 
-  4. Geom inside body, spanning between joint positions
-  
-  Correct. In write_xml_bodynode (line 565–735), a single <geom> is written as a child of each <body>. For capsules (most
-  limbs), fromto defines the two endpoints:
-  e1 = np.zeros(3)       # at current joint (body origin)
-  e2 = bone.end.copy()   # toward child joint (mean of children's offsets)
-  e1 += e2 * separation  # shrunk inward slightly (0.2 or 0.6 for trunk)
-  e2 -= e2 * separation
-  g_attr["fromto"] = ...  # capsule from e1 to e2
-  So the geom spans between (not exactly at) adjacent joint positions.
+------
 
-    - bone.pos — the start point (where this joint is, i.e. where the body connects to its parent)
-  - bone.end — the end point (mean of children's positions, i.e. where the next joint is)
+4. Geom inside body, spanning between joint positions
 
-  These two points define the segment that the geom must fit inside. You can see this directly in write_xml_bodynode at line
-  588:
+write_xml_bodynode (skeleton_local.py:563–609) writes one <geom> per <body>. Key quantities:
+- bone.pos: body origin = current joint (local frame origin)
+- bone.end: vector toward child joint
+- radius (capsule): solved from hull_dict[bone.name].volume via capsule volume equation (lines 566–568)
+- box: pos = midpoint of e1/e2, size from hull_dict norm_verts
+- sphere: radius = cbrt(3V/4π)
+- density on geom (default 500, or 1000 if real_weight) — MuJoCo derives mass/inertia automatically
 
-  e1 = np.zeros(3)         # origin of current body = bone.pos in local frame
-  e2 = bone.end.copy() + offset   # toward child joint
+The old approach inset fromto endpoints by a fixed separation fraction (0.2, or 0.6 for trunk) of bone length.
+Problem: visible surface gap = axis_gap − radius_parent − radius_child. Since radii scale with body volume
+(betas), thin bodies got large gaps and fat bodies got near-zero/overlapping gaps.
 
-  Then inset slightly from both ends:
-  e1 += e2 * separation    # move away from joint (0.2, or 0.6 for trunk)
-  e2 -= e2 * separation
+Fix (skeleton_local.py:595–608): after solving radius, recompute e1/e2 so the capsule surface lands at a
+fixed desired_gap (default 0.03 m) from each joint:
+  e1 = bone_dir * (radius + actual_gap)
+  e2 = bone_vec − bone_dir * (radius + actual_gap)
+actual_gap is clamped down gracefully for short bones so the capsule never becomes degenerate (zero-length),
+with a final fallback placing a minimal 2 mm capsule at the bone midpoint.
 
-  So e1 and e2 are the two endpoints of the available space, and then:
+------
 
-  - For capsule: fromto = [e1, e2] — capsule axis runs between them, radius is solved from hull_dict[bone.name].volume
-  - For box: pos = (e1 + e2) / 2, size derived from hull_dict
-  - For sphere: pos = origin, radius from hull_dict
+5. Geom encodes mass/inertia
 
-  So bone.pos → bone.end is the space, and hull_dict[bone.name].volume is the volume constraint that determines how thick the
-  geom is within that space.
-
-
-
-  ● The order in construct_tree makes it clear:
-
-  1. write_xml_bodynode runs first (line 412) — writes all bodies, geoms, joints into the XML tree based purely on
-  bone.pos/bone.end/hull_dict volume. At this point geoms may overlap each other.
-  2. geom_clearance.py runs after (lines 455–472) — it operates as a post-processing pass on the already-written XML:
-    - collect_geoms_from_tree(tree) — reads all geoms back out of the XML
-    - build_adjacency(self.bones) — finds which body pairs are adjacent (parent-child) so they're excluded from clearance
-  checks
-    - enforce_clearance(geoms, adj, min_gap) — shrinks any geom radii that are too close to a non-adjacent geom
-    - apply_geoms_to_tree(geoms) — writes the adjusted sizes back into the XML
-
-  So geom_clearance.py doesn't decide geom positions or shapes — it only shrinks geom radii after the fact if non-adjacent
-  geoms are overlapping or too close. write_xml_bodynode still makes all the primary decisions; clearance enforcement is
-  purely a correction pass on top.
-
-
-
-  ---
-  5. Geom encodes mass/inertia
-  
-  Partially correct — with an important nuance. There is no explicit <inertial> element written. Instead, each geom has a
-  density attribute (default 500 kg/m³, or 1000 if real_weight=True):
-  g_attr["density"] = str(base_density)
-  MuJoCo automatically derives the body's mass and inertia tensor from the geom's shape + density when no explicit <inertial>
-  block is present. So the geom implicitly carries inertial information — not as a sub-element, but via density on the geom
-  itself.
+No explicit <inertial> element is written. Each geom has a density attribute (default 500 kg/m³, or 1000 if
+real_weight=True). MuJoCo automatically derives body mass and inertia tensor from geom shape + density.
