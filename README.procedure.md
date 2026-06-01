@@ -72,5 +72,59 @@ with a final fallback placing a minimal 2 mm capsule at the bone midpoint.
 
 5. Geom encodes mass/inertia
 
-No explicit <inertial> element is written. Each geom has a density attribute (default 500 kg/m³, or 1000 if
-real_weight=True). MuJoCo automatically derives body mass and inertia tensor from geom shape + density.
+- Geom clearance gap
+
+> We enforce a fixed minimum clearance between non-adjacent collision geoms to prevent morphology-dependent self-penetration caused by extreme SMPL body shapes.
+
+GAINS_PHC in smpl_sim/smpllib/skeleton_local.py, Format: [stiffness, damping, gear, max_torque]
+
+GAINS_PHC = {
+      "L_Hip":      [800, 80, 1, 500],   # stiffness, damping written into <joint>
+      "L_Knee":     [800, 80, 1, 500],   # gear written into <motor>
+      ...
+      "Torso":      [1000, 100, 1, 500],
+      "L_Wrist":    [300, 30, 1, 150],
+}
+
+
+````markdown
+## Physics Argument
+
+Joint stiffness and damping act as PD gains in Isaac Gym. The closed-loop natural frequency of a PD-controlled joint is:
+
+\[
+\omega_n = \sqrt{\frac{k_p}{I}}
+\]
+
+With `real_weight=True`, density doubles: 500 → 1000 kg/m³
+
+Therefore, body-segment inertia roughly doubles. With the same (k_p), the natural frequency drops by:
+
+[
+\frac{1}{\sqrt{2}} \approx 0.7
+]
+
+This means the controller becomes approximately **30% slower** at tracking.
+
+For a critically damped response, the damping ratio is:
+
+[
+\zeta = \frac{k_d}{2\sqrt{k_p I}}
+]
+
+If (k_p) and (I) both double but (k_d) stays the same, then:
+
+[
+\zeta \rightarrow \frac{1}{\sqrt{2}} \zeta
+]
+
+So the system becomes more underdamped and may oscillate.
+
+To preserve the same control bandwidth and damping ratio, both gains should scale proportionally with inertia: x2
+
+### Argument for Scaling Gains by ×2
+
+- Scaling the gains is more physically principled. If the model now represents a realistic human body mass, approximately **70–80 kg**, then the joint gains should reflect the increased inertial load.
+- Published work (e.g., PHC, AMP) that achieves good AMASS tracking typically uses gains in the range of 1000–2000 for large joints at realistic human mass
+- Underdamped joints cause oscillation artifacts visible in the simulation that affect motion quality metrics
+

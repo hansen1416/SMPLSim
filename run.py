@@ -89,9 +89,9 @@ def generate_yaml(betas: torch.Tensor, gender: Gender, name: str):
         "ball_joint": False,  # keep simpler joint model
         "rel_joint_lm": False,  # keep default joint limits (avoid “too-loose” joints)
         "upright_start": True,  # keep default construction pose
-        "real_weight": False,  # more reasonable mass/inertia distribution
-        "real_weight_porpotion_capsules": False,
-        "real_weight_porpotion_boxes": False,
+        "real_weight": True,  # more reasonable mass/inertia distribution
+        "real_weight_porpotion_capsules": True,
+        "real_weight_porpotion_boxes": True,
         "create_vel_sensors": False,
         # do NOT randomize geometry/joints at first
         "body_params": {},
