@@ -38,7 +38,8 @@ from smpl_sim.envs.smplenv import SMPLHumanoid
 Gender = Literal["male", "female", "neutral"]
 
 PROTOMOTIONS_ROOT = os.path.join(os.path.dirname(__file__), "../ProtoMotions")
-BETAS_DIR = os.path.join(os.path.dirname(__file__), "../humos/humos")
+BETAS_DIR = os.path.join(PROTOMOTIONS_ROOT, "protomotions/data/assets")
+BETAS_DIR_HUMOS = os.path.join(os.path.dirname(__file__), "../humos/humos")
 
 
 def deterministic_hex4(rng: np.random.Generator) -> str:
@@ -173,7 +174,11 @@ def main():
     # ------------------------------------------------------------------ #
     betas_path = os.path.join(BETAS_DIR, f"all_betas_{args.mode}.pt")
     torch.save(all_betas, betas_path)
+    # mirror to humos repo so both projects stay in sync
+    betas_path_humos = os.path.join(BETAS_DIR_HUMOS, f"all_betas_{args.mode}.pt")
+    torch.save(all_betas, betas_path_humos)
     print(f"\n[2/3] Betas saved to: {betas_path}")
+    print(f"       (mirror)     : {betas_path_humos}")
 
     # ------------------------------------------------------------------ #
     # 3. Generate XML assets
@@ -197,7 +202,7 @@ def main():
         f"  cd /home/hlz/repos/ProtoMotions\n"
         f"  python tools/generate_smpl_mor_asset_info.py \\\n"
         f"      --asset-folder mjcf/smpl_mor_{args.mode} \\\n"
-        f"      --betas-file {betas_path} \\\n"
+        f"      --betas-file protomotions/data/assets/all_betas_{args.mode}.pt \\\n"
         f"      --out protomotions/data/assets/mjcf/smpl_mor_{args.mode}/assets.yaml"
     )
 
